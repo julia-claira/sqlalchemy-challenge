@@ -81,9 +81,37 @@ def Tobs():
 
     return jsonify(mostactiveYearlyTemp)
     
-#@app.route("/api/v1.0/<start> and /api/v1.0/<start>/<end>")
-#def home():
-    #print("api instructions")
+@app.route("/api/v1.0/<start>")
+def startdate(start):
+    
+
+    #start session and query from start date
+    session=Session(engine)   
+    
+    temp_from_start_date=summary_by_date=session.query(Measurement.date,Measurement.tobs)\
+    .filter(Measurement.date>=start).all()
+    
+    session.close()
+   
+
+    return jsonify(temp_from_start_date)
+           
+@app.route("/api/v1.0/<start>/<end>")
+def startenddate(start,end):
+    
+
+    #start session and query from start date and end date
+    session=Session(engine)   
+    
+    temp_from_startend_date=summary_by_date=session.query(Measurement.date,Measurement.tobs)\
+    .filter(Measurement.date>=start).filter(Measurement.date<=end).all()
+    
+    session.close()
+   
+
+    return jsonify(temp_from_startend_date) 
+    
+            
     
 if __name__=="__main__":
     app.run(debug=True)
