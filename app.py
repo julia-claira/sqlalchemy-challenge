@@ -25,10 +25,16 @@ app=Flask(__name__)
 def home():
     return (
         f"Welcome To Julia's SQLAlchemy Weather API<br>"
+        f"<br>"
         f"Available Routes:<br>"
+        f"----------------<br>"
         f"/api/v1.0/precipitation<br>"
         f"/api/v1.0/stations<br>"
-        f"/api/v1.0/tobs<br>")
+        f"/api/v1.0/tobs<br>"
+        f"/api/v1.0/start_date"
+        f"/api/v1.0/start_date/end_date<br>"
+        f"<br>"
+        f"example date search: /api/v1.0/2014-01-30/2016-12-01")
 
 @app.route("/api/v1.0/precipitation")
 def prec():
@@ -88,13 +94,29 @@ def startdate(start):
     #start session and query from start date
     session=Session(engine)   
     
-    temp_from_start_date=summary_by_date=session.query(Measurement.date,Measurement.tobs)\
-    .filter(Measurement.date>=start).all()
+    #checks for the latest date to make sure query is within bounds
+    highest_date=session.query(func.max(Measurement.date)).all()[0][0]
     
-    session.close()
+    if (start<=highest_date):
+    
+        summary_by_start=session.query(func.min(Measurement.tobs),\
+        func.max(Measurement.tobs),func.avg(Measurement.tobs))\
+        .filter(Measurement.date>=start).all()
+    
+        session.close()
+    
+        #create dictionary for output
+        summary={
+            "_Start Date":start,
+            "Min Temp":summary_by_start[0][0],
+            "Max Temp":summary_by_start[0][1],
+            "Avg Temp":round(summary_by_start[0][2],2)}
    
-
-    return jsonify(temp_from_start_date)
+    else:
+        #if query is out of bounds return this warning
+        summary=[f"You're query is out of bounds. This API only goes to {highest_date}."]
+        
+    return jsonify(summary)
            
 @app.route("/api/v1.0/<start>/<end>")
 def startenddate(start,end):
@@ -102,16 +124,41 @@ def startenddate(start,end):
 
     #start session and query from start date and end date
     session=Session(engine)   
+
+    #checks for the latest date to make sure query is within bounds
+    highest_date=session.query(func.max(Measurement.date)).all()[0][0]
     
-    temp_from_startend_date=summary_by_date=session.query(Measurement.date,Measurement.tobs)\
-    .filter(Measurement.date>=start).filter(Measurement.date<=end).all()
+    #if the end query is higher the latest date, reset to latest date
+    if end>=highest_date:
+        end=highest_date
     
-    session.close()
+    if (start<=highest_date) and start<end:
+    
+        summary_by_start=session.query(func.min(Measurement.tobs),\
+        func.max(Measurement.tobs),func.avg(Measurement.tobs))\
+        .filter(Measurement.date>=start).filter(Measurement.date<=end).all()
+    
+        session.close()
+   
+        #create dictionary for output
+        summary={
+        "_Start Date":start,
+        "_End Date":end,
+        "Min Temp":summary_by_start[0][0],
+        "Max Temp":summary_by_start[0][1],
+        "Avg Temp":round(summary_by_start[0][2],2)}
    
 
-    return jsonify(temp_from_startend_date) 
+    else:
+        if start>highest_date:
+            #if start query is out of bounds return this warning
+            summary=[f"Warning: your start query is out of bounds. This API only goes to {highest_date}."]
+        else:
+            #warns that the start date is higher than end date
+            summary=[f"Warning: your start date {start} is greater than your end date {end}"]
+        
+    return jsonify(summary)
     
-            
-    
+                
 if __name__=="__main__":
     app.run(debug=True)
