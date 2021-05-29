@@ -53,7 +53,9 @@ def prec():
 @app.route("/api/v1.0/stations")
 def stations():
     session=Session(engine)
-    station_query=session.query(Station.station).distinct().all()
+    
+    station_query=session.query(Station.name).distinct().all()
+    
     session.close()
  
     # return list
@@ -76,6 +78,7 @@ def Tobs():
     session=Session(engine)
     mostactive=session.query(Measurement.station)\
     .group_by('station').order_by(func.count(Measurement.id).desc()).all()[0][0]                            
+    
     #filters for most active between the year set
     mostactiveYearlyTemp=session.query(Measurement.date,Measurement.tobs)\
     .filter(Measurement.station==mostactive)\
